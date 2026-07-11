@@ -184,8 +184,12 @@ export default function App() {
         <StatCard title="Untung Bersih" value="RM 511.52" icon={TrendingUp} trend="up" trendValue="+8.2%" />
         <StatCard title="Biggest Win" value="RM 850.00" remark="(YTL)" icon={Award} trend="up" trendValue="+5.1%" />
         <StatCard title="Biggest Loss" value="-RM 320.00" remark="(DNEX)" icon={AlertTriangle} trend="down" trendValue="-2.4%" />
-        <div className="col-span-2 lg:col-span-1">
-           <StatCard title="Jumlah ROI" value="19.00%" icon={Percent} trend="up" trendValue="+4.2%" />
+        
+        {/* KOTAK ROI (Dilaraskan ke tengah untuk Mobile, 60% saiz) */}
+        <div className="col-span-2 lg:col-span-1 flex justify-center lg:block">
+           <div className="w-[60%] sm:w-1/2 lg:w-full h-full">
+             <StatCard title="Jumlah ROI" value="19.00%" icon={Percent} trend="up" trendValue="+4.2%" />
+           </div>
         </div>
       </div>
 
@@ -278,7 +282,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* GRAF KEKERAPAN SEKTOR (Ditukar ke Bar Chart) */}
+        {/* GRAF KEKERAPAN SEKTOR (Bar Chart) */}
         <div className="bg-[#170b0c] border border-[#2b1416] rounded-2xl p-4 md:p-6 flex flex-col min-h-[280px]">
           <h2 className="text-sm font-bold text-white">Kekerapan Sektor</h2>
           <p className="text-[#a38c8e] text-xs mb-4">Sektor Bursa yang aktif di-trade (%)</p>
@@ -480,16 +484,42 @@ export default function App() {
         <div className="p-4 border-t border-[#2b1416]"><button onClick={() => navigateTo('settings')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'settings' ? 'bg-gradient-to-r from-[#2b1416] to-transparent text-[#ff2a44] border-l-2 border-[#ff2a44]' : 'text-[#a38c8e] hover:bg-[#170b0c] hover:text-white'}`}><Settings size={18} /> <span className="font-medium text-sm">Tetapan</span></button></div>
       </div>
       <div className="flex-1 flex flex-col h-screen overflow-hidden w-full">
+        
+        {/* HEADER DILARASKAN UNTUK MOBILE */}
         <header className="h-16 md:h-20 border-b border-[#2b1416] flex items-center justify-between px-4 md:px-8 bg-[#090505]/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
-          <div className="flex items-center gap-3 w-full md:w-auto">
-             <button className="md:hidden text-[#a38c8e] hover:text-white p-1" onClick={() => setIsMobileMenuOpen(true)}><Menu size={24} /></button>
-            <div className="relative flex-1 md:w-72"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a38c8e]" /><input type="text" placeholder="Cari..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-[#170b0c] border border-[#2b1416] rounded-full py-2 pl-9 md:pl-10 pr-4 text-xs md:text-sm text-white placeholder-[#a38c8e] focus:outline-none focus:border-[#ff2a44] transition-colors uppercase" /></div>
+          
+          {/* Bahagian Kiri Header: Menu & Search & Butang [+] Mobile */}
+          <div className="flex items-center gap-2 md:gap-3 flex-1 md:flex-none md:w-auto">
+             <button className="md:hidden text-[#a38c8e] hover:text-white p-1 shrink-0" onClick={() => setIsMobileMenuOpen(true)}>
+               <Menu size={24} />
+             </button>
+             
+            <div className="relative flex-1 md:w-72">
+              <Search size={14} className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-[#a38c8e]" />
+              <input type="text" placeholder="Cari..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-[#170b0c] border border-[#2b1416] rounded-full py-1.5 md:py-2 pl-8 md:pl-10 pr-3 text-xs md:text-sm text-white placeholder-[#a38c8e] focus:outline-none focus:border-[#ff2a44] transition-colors uppercase" />
+            </div>
+            
+            {/* Butang [+] Bulat Merah (KHAS MOBILE SAHAJA) */}
+            <button 
+              onClick={() => navigateTo('plan')} 
+              className="md:hidden flex items-center justify-center w-8 h-8 bg-[#ff2a44] rounded-full shadow-[0_0_10px_rgba(255,42,68,0.4)] shrink-0"
+            >
+              <Plus size={20} strokeWidth={3} className="text-white" />
+            </button>
           </div>
-          <div className="flex items-center gap-4 md:gap-6 ml-4">
-            <button onClick={() => navigateTo('plan')} className="hidden sm:flex items-center gap-2 bg-[#ff2a44] text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(255,42,68,0.3)] hover:bg-[#e0253b] transition-all"><Plus size={16} /> <span className="hidden md:inline">Trade Baru</span></button>
-            <div className="hidden sm:block w-px h-6 bg-[#2b1416]"></div>
+          
+          {/* Bahagian Kanan Header: Trade Baru (Desktop) & Loceng & Profil */}
+          <div className="flex items-center gap-3 md:gap-6 ml-3 shrink-0">
+            <button onClick={() => navigateTo('plan')} className="hidden md:flex items-center gap-2 bg-[#ff2a44] text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(255,42,68,0.3)] hover:bg-[#e0253b] transition-all">
+              <Plus size={16} /> <span className="hidden md:inline">Trade Baru</span>
+            </button>
+            <div className="hidden md:block w-px h-6 bg-[#2b1416]"></div>
+            
             <div className="relative">
-              <button onClick={() => setShowNotifications(!showNotifications)} className="text-[#a38c8e] hover:text-white transition-colors relative mt-1"><Bell size={20} /><span className="absolute -top-1 -right-1 w-2 h-2 bg-[#ff2a44] rounded-full shadow-[0_0_5px_#ff2a44]"></span></button>
+              <button onClick={() => setShowNotifications(!showNotifications)} className="text-[#a38c8e] hover:text-white transition-colors relative mt-1">
+                <Bell size={20} />
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#ff2a44] rounded-full shadow-[0_0_5px_#ff2a44]"></span>
+              </button>
               {showNotifications && (
                 <div className="absolute right-[-40px] md:right-0 mt-4 w-64 bg-[#170b0c] border border-[#2b1416] rounded-xl shadow-2xl py-2 z-50">
                   <p className="text-xs text-[#a38c8e] uppercase px-4 py-2 border-b border-[#2b1416] font-bold">Notifikasi Baru</p>
@@ -497,6 +527,7 @@ export default function App() {
                 </div>
               )}
             </div>
+            
             <div onClick={() => navigateTo('settings')} className="flex items-center gap-3 cursor-pointer group">
               <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-[#2b1416] border border-[#ff2a44] flex items-center justify-center text-xs md:text-sm font-bold group-hover:bg-[#ff2a44] transition-colors">{profile.initials}</div>
               <div className="hidden lg:block"><p className="text-sm font-semibold group-hover:text-[#ff2a44] transition-colors">{profile.name}</p><p className="text-[10px] text-[#a38c8e]">Trader Profesional</p></div>
@@ -504,6 +535,7 @@ export default function App() {
             </div>
           </div>
         </header>
+
         <main className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-hide">
           <div className="max-w-7xl mx-auto">
             {activeMenu === 'dashboard' && renderDashboard()}
