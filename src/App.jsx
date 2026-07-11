@@ -11,15 +11,14 @@ import {
   Bell,
   Search,
   ChevronDown,
-  Lock,
-  Save,
   Plus,
   Filter,
   User,
   ArrowRightLeft,
   Briefcase,
   Menu,
-  X
+  X,
+  Save
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -85,46 +84,68 @@ const StatCard = ({ title, value, icon: Icon, trend, trendValue }) => (
 );
 
 export default function App() {
-  const [activeMenu, setActiveMenu] = useState('dashboard');
+  const [activeMenu, setActiveMenu] = useState('plan'); // Tukar default ke 'plan' untuk test
   const [activeTabSettings, setActiveTabSettings] = useState('modal');
   const [timeframe, setTimeframe] = useState('Bulan');
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // State untuk Menu Mobile
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  const [planForm, setPlanForm] = useState({
-    symbol: '', setup: 'Breakout', riskPct: 2, entry: '', sl: '', tp: '', status: 'Active'
+  // --- STATE UNTUK TRADING PLAN (TABLE) ---
+  const [plans, setPlans] = useState([
+    { id: 1, date: '1-Jul-2026', holding: '13', code: '0196', name: 'QES', reason: 'Pullback + Vol', entry: '0.545', sl: '0.525', riskPct: '3', tp: '0.610', status: 'ACTIVE' }
+  ]);
+
+  const [newPlan, setNewPlan] = useState({
+    date: '11-Jul-2026', holding: '0', code: '', name: '', reason: 'Breakout', entry: '', sl: '', riskPct: '2', tp: '', status: 'WATCHLIST'
   });
 
-  const handlePlanChange = (e) => {
+  const handleNewPlanChange = (e) => {
     const { name, value } = e.target;
-    setPlanForm(prev => ({ ...prev, [name]: value }));
+    setNewPlan(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddPlan = () => {
+    if (!newPlan.code || !newPlan.entry) return; // Simple validation
+    setPlans([{ ...newPlan, id: Date.now() }, ...plans]);
+    setNewPlan({ date: '11-Jul-2026', holding: '0', code: '', name: '', reason: 'Breakout', entry: '', sl: '', riskPct: '2', tp: '', status: 'WATCHLIST' });
+  };
+
+  // Logik Auto-Kira Position Sizing
+  const calculatePosition = (row) => {
+    const entry = parseFloat(row.entry) || 0;
+    const sl = parseFloat(row.sl) || 0;
+    const tp = parseFloat(row.tp) || 0;
+    const risk = parseFloat(row.riskPct) || 0;
+
+    const maxLoss = currentCapital * (risk / 100);
+    const riskPerUnit = entry > sl ? entry - sl : 0;
+    
+    let unitsToBuy = 0;
+    let capitalNeeded = 0;
+    if (riskPerUnit > 0) {
+        let rawUnits = maxLoss / riskPerUnit;
+        unitsToBuy = Math.floor(rawUnits / 100) * 100; // Bundar ke Lot Bursa terdekat (100 unit)
+        capitalNeeded = unitsToBuy * entry;
+    }
+
+    let profitPct = 0;
+    if (entry > 0 && tp > entry) {
+        profitPct = ((tp - entry) / entry) * 100;
+    }
+
+    return { maxLoss, unitsToBuy, capitalNeeded, profitPct };
   };
 
   const navigateTo = (menu) => {
     setActiveMenu(menu);
-    setIsMobileMenuOpen(false); // Tutup menu mobile lepas klik
+    setIsMobileMenuOpen(false);
   }
 
   const chartData = timeframe === 'Minggu' ? dataMinggu : timeframe === 'Bulan' ? dataBulan : dataTahun;
   const filteredJournal = mockJournal.filter(trade => trade.symbol.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const entryPrice = parseFloat(planForm.entry) || 0;
-  const slPrice = parseFloat(planForm.sl) || 0;
-  const tpPrice = parseFloat(planForm.tp) || 0;
-  const riskPct = parseFloat(planForm.riskPct) || 0;
-  const riskAmountRM = currentCapital * (riskPct / 100);
-  const riskPerUnit = entryPrice > slPrice ? (entryPrice - slPrice) : 0;
-  
-  let unitsToBuy = 0, capitalNeeded = 0, rrRatio = 0;
-  if (entryPrice > 0 && slPrice > 0 && riskPerUnit > 0) {
-    unitsToBuy = Math.floor(riskAmountRM / riskPerUnit);
-    capitalNeeded = unitsToBuy * entryPrice;
-  }
-  if (entryPrice > 0 && slPrice > 0 && tpPrice > entryPrice) {
-    rrRatio = (tpPrice - entryPrice) / riskPerUnit;
-  }
-  const isExecuted = planForm.status === 'Executed';
+  // --- RENDER VIEWS ---
 
   const renderDashboard = () => (
     <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500">
@@ -144,15 +165,7 @@ export default function App() {
             </div>
             <div className="flex gap-1 bg-[#090505] p-1 rounded-lg border border-[#2b1416] self-start sm:self-auto">
               {['Minggu', 'Bulan', 'Tahun'].map(t => (
-                <button 
-                  key={t}
-                  onClick={() => setTimeframe(t)}
-                  className={`px-3 py-1 text-[10px] md:text-xs rounded-md font-medium transition-colors ${
-                    timeframe === t ? 'bg-[#2b1416] text-[#ff2a44] shadow-sm' : 'text-[#a38c8e] hover:text-white'
-                  }`}
-                >
-                  {t}
-                </button>
+                <button key={t} onClick={() => setTimeframe(t)} className={`px-3 py-1 text-[10px] md:text-xs rounded-md font-medium transition-colors ${timeframe === t ? 'bg-[#2b1416] text-[#ff2a44] shadow-sm' : 'text-[#a38c8e] hover:text-white'}`}>{t}</button>
               ))}
             </div>
           </div>
@@ -205,7 +218,8 @@ export default function App() {
           </div>
         </div>
       </div>
-
+      
+      {/* Trade Terkini */}
       <div className="bg-[#170b0c] border border-[#2b1416] rounded-2xl p-4 md:p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-base md:text-lg font-bold">Trade Terkini</h2>
@@ -215,36 +229,17 @@ export default function App() {
           <table className="w-full text-left border-collapse whitespace-nowrap min-w-[500px]">
             <thead>
               <tr className="border-b border-[#2b1416] text-[#a38c8e] text-xs uppercase tracking-wider">
-                <th className="pb-4 pl-2 font-medium">Saham</th>
-                <th className="pb-4 font-medium">Strategi</th>
-                <th className="pb-4 font-medium">Entry</th>
-                <th className="pb-4 font-medium">P&L</th>
-                <th className="pb-4 font-medium text-right pr-2">Status</th>
+                <th className="pb-4 pl-2 font-medium">Saham</th><th className="pb-4 font-medium">Strategi</th><th className="pb-4 font-medium">Entry</th><th className="pb-4 font-medium">P&L</th><th className="pb-4 font-medium text-right pr-2">Status</th>
               </tr>
             </thead>
             <tbody className="text-xs md:text-sm">
               {filteredJournal.slice(0, 3).map((trade) => (
                 <tr key={trade.id} className="border-b border-[#2b1416]/50 hover:bg-[#2b1416]/20 transition-colors">
-                  <td className="py-4 pl-2 font-semibold text-white">{trade.symbol}</td>
-                  <td className="py-4 text-[#a38c8e]">{trade.setup}</td>
-                  <td className="py-4 font-mono text-white">RM {trade.entry.toFixed(3)}</td>
-                  <td className={`py-4 font-mono font-bold ${trade.pnl > 0 ? 'text-emerald-400' : trade.pnl < 0 ? 'text-red-400' : 'text-gray-400'}`}>
-                    {trade.pnl > 0 ? '+' : ''}{trade.pnl}
-                  </td>
-                  <td className="py-4 text-right pr-2">
-                    <span className={`px-2 py-1 md:px-3 rounded-full text-[9px] md:text-[10px] font-bold ${
-                      trade.status === 'WIN' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-500/30' :
-                      trade.status === 'LOSS' ? 'bg-red-900/30 text-red-400 border border-red-500/30' :
-                      'bg-gray-800/50 text-gray-400 border border-gray-600/50'
-                    }`}>{trade.status}</span>
-                  </td>
+                  <td className="py-4 pl-2 font-semibold text-white">{trade.symbol}</td><td className="py-4 text-[#a38c8e]">{trade.setup}</td><td className="py-4 font-mono text-white">RM {trade.entry.toFixed(3)}</td>
+                  <td className={`py-4 font-mono font-bold ${trade.pnl > 0 ? 'text-emerald-400' : trade.pnl < 0 ? 'text-red-400' : 'text-gray-400'}`}>{trade.pnl > 0 ? '+' : ''}{trade.pnl}</td>
+                  <td className="py-4 text-right pr-2"><span className={`px-2 py-1 md:px-3 rounded-full text-[9px] md:text-[10px] font-bold ${trade.status === 'WIN' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-500/30' : trade.status === 'LOSS' ? 'bg-red-900/30 text-red-400 border border-red-500/30' : 'bg-gray-800/50 text-gray-400 border border-gray-600/50'}`}>{trade.status}</span></td>
                 </tr>
               ))}
-              {filteredJournal.length === 0 && (
-                <tr>
-                  <td colSpan="5" className="py-8 text-center text-[#a38c8e]">Tiada rekod dijumpai untuk carian ini.</td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
@@ -252,70 +247,128 @@ export default function App() {
     </div>
   );
 
-  const renderTradingPlan = () => (
-    <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-white">Pelan Trading & Position Sizing</h1>
-          <p className="text-[#a38c8e] text-xs md:text-sm mt-1">Kira saiz lot dan kawal risiko sebelum masuk pasaran.</p>
-        </div>
-        <div className="bg-[#170b0c] border border-[#2b1416] px-4 py-2 rounded-xl w-full sm:w-auto">
-           <p className="text-[10px] md:text-xs text-[#a38c8e]">Modal Rujukan</p>
-           <p className="text-base md:text-lg font-bold text-white">RM {currentCapital.toLocaleString('en-MY', {minimumFractionDigits: 2})}</p>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        <div className="lg:col-span-2 bg-[#170b0c] border border-[#2b1416] rounded-2xl p-4 md:p-6 shadow-xl">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-[#2b1416] pb-4">
-            <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2"><Target size={20} className="text-[#ff2a44]"/> Parameter Setup</h2>
-            <select name="status" value={planForm.status} onChange={handlePlanChange} className={`text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg sm:rounded-full outline-none cursor-pointer border w-full sm:w-auto ${planForm.status === 'Active' ? 'bg-blue-900/30 text-blue-400 border-blue-500/30' : planForm.status === 'Watchlist' ? 'bg-yellow-900/30 text-yellow-400 border-yellow-500/30' : planForm.status === 'Executed' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30' : 'bg-gray-800/50 text-gray-400 border-gray-600/50'}`}>
-              <option value="Active">🟢 ACTIVE</option><option value="Watchlist">🟡 WATCHLIST</option><option value="Executed">🔒 EXECUTED</option><option value="Cancelled">⚫ CANCELLED</option>
-            </select>
+  const renderTradingPlan = () => {
+    // Pengiraan Automatik untuk Input Row
+    const calcInput = calculatePosition(newPlan);
+
+    return (
+      <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-white">Pelan Perdagangan</h1>
+            <p className="text-[#a38c8e] text-xs md:text-sm mt-1">Kira automatik saiz lot dan kawal risiko seperti spreadsheet Excel.</p>
           </div>
-          {isExecuted && (
-            <div className="mb-6 p-3 bg-emerald-900/10 border border-emerald-500/20 rounded-xl flex items-start sm:items-center gap-3 text-emerald-400/80 text-xs md:text-sm">
-              <Lock size={16} className="mt-0.5 sm:mt-0 shrink-0" /><p>Status ditetapkan kepada <strong>Executed</strong>. Data harga dikunci.</p>
-            </div>
-          )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div className="space-y-1"><label className="text-[10px] md:text-xs text-[#a38c8e] uppercase">Simbol Saham</label><input type="text" name="symbol" value={planForm.symbol} onChange={handlePlanChange} disabled={isExecuted} placeholder="Cth: YTL" className={`w-full bg-[#090505] border border-[#2b1416] rounded-lg p-3 text-sm text-white uppercase outline-none focus:border-[#ff2a44] ${isExecuted ? 'opacity-50' : ''}`} /></div>
-            <div className="space-y-1"><label className="text-[10px] md:text-xs text-[#a38c8e] uppercase">Strategi</label><select name="setup" value={planForm.setup} onChange={handlePlanChange} disabled={isExecuted} className={`w-full bg-[#090505] border border-[#2b1416] rounded-lg p-3 text-sm text-white outline-none focus:border-[#ff2a44] ${isExecuted ? 'opacity-50' : ''}`}><option>Breakout</option><option>Pullback + Vol</option><option>Reversal</option></select></div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div className="space-y-1"><label className="text-[10px] md:text-xs text-[#a38c8e] uppercase">Entry Price</label><input type="number" step="0.005" name="entry" value={planForm.entry} onChange={handlePlanChange} disabled={isExecuted} placeholder="0.00" className={`w-full bg-[#090505] border border-[#2b1416] rounded-lg p-3 text-sm text-white outline-none focus:border-[#ff2a44] font-mono ${isExecuted ? 'opacity-50 text-[#a38c8e]' : ''}`} /></div>
-            <div className="space-y-1"><label className="text-[10px] md:text-xs text-[#a38c8e] uppercase">Stop Loss</label><input type="number" step="0.005" name="sl" value={planForm.sl} onChange={handlePlanChange} disabled={isExecuted} placeholder="0.00" className={`w-full bg-[#090505] border border-[#2b1416] rounded-lg p-3 text-sm text-red-400 outline-none focus:border-[#ff2a44] font-mono ${isExecuted ? 'opacity-50' : ''}`} /></div>
-            <div className="space-y-1"><label className="text-[10px] md:text-xs text-[#a38c8e] uppercase">Target Profit</label><input type="number" step="0.005" name="tp" value={planForm.tp} onChange={handlePlanChange} disabled={isExecuted} placeholder="0.00" className={`w-full bg-[#090505] border border-[#2b1416] rounded-lg p-3 text-sm text-emerald-400 outline-none focus:border-[#ff2a44] font-mono ${isExecuted ? 'opacity-50' : ''}`} /></div>
-          </div>
-          <div className="w-full sm:w-1/3 pr-0 sm:pr-2 space-y-1 mb-8">
-            <label className="text-[10px] md:text-xs text-[#a38c8e] uppercase">Risiko (%)</label>
-            <div className="relative">
-              <input type="number" name="riskPct" value={planForm.riskPct} onChange={handlePlanChange} disabled={isExecuted} className={`w-full bg-[#090505] border border-[#2b1416] rounded-lg p-3 pl-8 text-sm text-white outline-none focus:border-[#ff2a44] font-mono ${isExecuted ? 'opacity-50' : ''}`} />
-              <Percent size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a38c8e]" />
-            </div>
-          </div>
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
-             <button className="w-full sm:w-auto px-6 py-3 sm:py-2 rounded-lg border border-[#2b1416] text-[#a38c8e] hover:bg-[#2b1416] text-sm font-semibold">Kosongkan</button>
-             <button className="w-full sm:w-auto px-6 py-3 sm:py-2 rounded-lg bg-[#ff2a44] text-white hover:bg-[#e0253b] flex items-center justify-center gap-2 text-sm font-semibold shadow-[0_0_15px_rgba(255,42,68,0.3)]"><Save size={16} /> Simpan Pelan</button>
+          <div className="bg-[#170b0c] border border-[#2b1416] px-4 py-2 rounded-xl flex items-center gap-4 shadow-md w-full md:w-auto">
+             <div>
+               <p className="text-[10px] md:text-xs text-[#a38c8e]">Modal Rujukan</p>
+               <p className="text-base md:text-lg font-bold text-white">RM {currentCapital.toLocaleString('en-MY', {minimumFractionDigits: 2})}</p>
+             </div>
           </div>
         </div>
         
-        <div className="bg-gradient-to-b from-[#1c0d0f] to-[#110809] border border-[#2b1416] rounded-2xl p-4 md:p-6 relative overflow-hidden">
-           <div className="absolute top-0 left-0 w-full h-1 bg-[#ff2a44]"></div>
-           <h2 className="text-xs md:text-sm font-bold text-[#a38c8e] uppercase tracking-widest mb-6">Position Sizing</h2>
-           <div className="space-y-6">
-              <div><p className="text-[10px] md:text-xs text-[#a38c8e] mb-1">Risiko RM (Sedia Rugi)</p><p className="text-2xl md:text-3xl font-bold text-white font-mono">RM {riskAmountRM.toFixed(2)}</p></div>
-              <div className="pt-4 border-t border-[#2b1416]"><p className="text-[10px] md:text-xs text-[#a38c8e] mb-1">Unit Boleh Beli (Lot)</p><p className="text-2xl md:text-3xl font-bold text-blue-400 font-mono">{unitsToBuy.toLocaleString()}</p><p className="text-[10px] md:text-xs text-[#a38c8e] mt-1">= {Math.floor(unitsToBuy/100)} Lot</p></div>
-              <div className="pt-4 border-t border-[#2b1416]"><p className="text-[10px] md:text-xs text-[#a38c8e] mb-1">Modal Diperlukan</p><p className="text-xl md:text-2xl font-bold text-white font-mono">RM {capitalNeeded.toLocaleString('en-MY', {minimumFractionDigits: 2})}</p></div>
-              <div className="pt-4 border-t border-[#2b1416] flex justify-between items-center">
-                 <div><p className="text-[10px] md:text-xs text-[#a38c8e] mb-1">Potensi R:R</p><p className={`text-lg md:text-xl font-bold font-mono ${rrRatio >= 2 ? 'text-emerald-400' : 'text-yellow-400'}`}>1 : {rrRatio.toFixed(2)}</p></div>
-                 {isExecuted && <div className="bg-[#2b1416] p-2 rounded-full border border-[#4a2528]"><Lock size={20} className="text-[#ff2a44]" /></div>}
-              </div>
-           </div>
+        {/* Jadual Utama bergaya Spreadsheet */}
+        <div className="bg-[#170b0c] border border-[#2b1416] rounded-2xl overflow-hidden shadow-xl">
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full text-left border-collapse whitespace-nowrap min-w-[1200px]">
+              
+              {/* HEADER KUMPULAN (Double-header) */}
+              <thead>
+                <tr className="bg-[#2b1416] text-[#a38c8e] text-[9px] md:text-[10px] uppercase tracking-widest text-center border-b border-[#4a2528]">
+                  <th rowSpan="2" className="py-2 px-3 border-r border-[#4a2528] font-bold">Date</th>
+                  <th rowSpan="2" className="py-2 px-3 border-r border-[#4a2528] font-bold">Holding<br/>Day</th>
+                  <th colSpan="2" className="py-2 px-3 border-r border-[#4a2528] bg-[#361a1c] font-bold text-white">Stock</th>
+                  <th colSpan="5" className="py-2 px-3 border-r border-[#4a2528] bg-[#1a2332] text-blue-300 font-bold">Planning</th>
+                  <th colSpan="3" className="py-2 px-3 border-r border-[#4a2528] bg-[#332211] text-orange-300 font-bold">Position Sizing</th>
+                  <th rowSpan="2" className="py-2 px-3 font-bold bg-[#112a1f] text-emerald-300">Status</th>
+                </tr>
+                <tr className="bg-[#110809] text-[#a38c8e] text-[9px] md:text-[10px] uppercase tracking-wider text-center border-b border-[#2b1416]">
+                  {/* Stock */}
+                  <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Code</th>
+                  <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Name</th>
+                  {/* Planning */}
+                  <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Reason Buy</th>
+                  <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Entry Price</th>
+                  <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Stop Loss</th>
+                  <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Risk %</th>
+                  <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Target Price</th>
+                  {/* Position Sizing */}
+                  <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Max Loss (RM)</th>
+                  <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Unit To Buy</th>
+                  <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Capital Needed</th>
+                </tr>
+              </thead>
+
+              <tbody className="text-xs font-mono">
+                {/* INPUT ROW (Baris Baru) */}
+                <tr className="bg-[#2b1416]/40 border-b-2 border-[#ff2a44]/50 hover:bg-[#2b1416]/60 transition-colors">
+                  <td className="p-1 border-r border-[#2b1416]"><input type="text" name="date" value={newPlan.date} onChange={handleNewPlanChange} className="w-20 bg-transparent text-center outline-none text-[#a38c8e] text-[10px]" /></td>
+                  <td className="p-1 border-r border-[#2b1416]"><input type="number" name="holding" value={newPlan.holding} onChange={handleNewPlanChange} className="w-12 bg-transparent text-center outline-none text-[#a38c8e]" /></td>
+                  <td className="p-1 border-r border-[#2b1416]"><input type="text" name="code" placeholder="0196" value={newPlan.code} onChange={handleNewPlanChange} className="w-14 bg-[#090505] p-1.5 rounded outline-none border border-[#4a2528] focus:border-[#ff2a44] text-white text-center" /></td>
+                  <td className="p-1 border-r border-[#2b1416]"><input type="text" name="name" placeholder="QES" value={newPlan.name} onChange={handleNewPlanChange} className="w-20 bg-[#090505] p-1.5 rounded outline-none border border-[#4a2528] focus:border-[#ff2a44] text-white uppercase font-bold" /></td>
+                  
+                  <td className="p-1 border-r border-[#2b1416]">
+                    <select name="reason" value={newPlan.reason} onChange={handleNewPlanChange} className="w-28 bg-[#090505] p-1.5 rounded outline-none border border-[#4a2528] text-white text-[10px]">
+                      <option>Breakout</option><option>Pullback + Vol</option><option>Reversal</option>
+                    </select>
+                  </td>
+                  <td className="p-1 border-r border-[#2b1416] bg-blue-900/10"><input type="number" step="0.005" name="entry" placeholder="0.000" value={newPlan.entry} onChange={handleNewPlanChange} className="w-16 bg-[#090505] p-1.5 rounded outline-none border border-blue-900/50 focus:border-blue-500 text-white text-right" /></td>
+                  <td className="p-1 border-r border-[#2b1416] bg-red-900/10"><input type="number" step="0.005" name="sl" placeholder="0.000" value={newPlan.sl} onChange={handleNewPlanChange} className="w-16 bg-[#090505] p-1.5 rounded outline-none border border-red-900/50 focus:border-red-500 text-red-400 text-right" /></td>
+                  <td className="p-1 border-r border-[#2b1416] bg-[#170b0c]"><input type="number" step="1" name="riskPct" value={newPlan.riskPct} onChange={handleNewPlanChange} className="w-12 bg-[#090505] p-1.5 rounded outline-none border border-[#4a2528] text-white text-center" /></td>
+                  <td className="p-1 border-r border-[#2b1416] bg-emerald-900/10"><input type="number" step="0.005" name="tp" placeholder="0.000" value={newPlan.tp} onChange={handleNewPlanChange} className="w-16 bg-[#090505] p-1.5 rounded outline-none border border-emerald-900/50 focus:border-emerald-500 text-emerald-400 text-right" /></td>
+                  
+                  {/* Auto Calculated Columns untuk Input Row */}
+                  <td className="p-2 border-r border-[#2b1416] text-right font-bold text-red-300 bg-[#170b0c]">{calcInput.maxLoss > 0 ? calcInput.maxLoss.toFixed(2) : '-'}</td>
+                  <td className="p-2 border-r border-[#2b1416] text-center font-bold text-blue-300 bg-[#170b0c]">{calcInput.unitsToBuy > 0 ? calcInput.unitsToBuy : '-'}</td>
+                  <td className="p-2 border-r border-[#2b1416] text-right font-bold text-white bg-[#170b0c]">{calcInput.capitalNeeded > 0 ? calcInput.capitalNeeded.toFixed(2) : '-'}</td>
+                  
+                  <td className="p-1 flex items-center justify-between gap-2 h-full">
+                    <select name="status" value={newPlan.status} onChange={handleNewPlanChange} className="w-24 bg-[#090505] p-1.5 rounded outline-none border border-yellow-900/50 text-yellow-400 font-bold text-[10px]">
+                      <option value="ACTIVE">ACTIVE</option><option value="WATCHLIST">WATCHLIST</option>
+                    </select>
+                    <button onClick={handleAddPlan} className="bg-[#ff2a44] p-1.5 rounded text-white hover:bg-[#e0253b] transition-colors shadow-lg"><Save size={14}/></button>
+                  </td>
+                </tr>
+
+                {/* DATA ROWS (Sejarah/Senarai Plan yang dah di 'Save') */}
+                {plans.map((row) => {
+                  const calc = calculatePosition(row);
+                  return (
+                    <tr key={row.id} className="border-b border-[#2b1416]/50 hover:bg-[#2b1416]/20 transition-colors h-10">
+                      <td className="px-3 border-r border-[#2b1416] text-center text-[#a38c8e] text-[10px]">{row.date}</td>
+                      <td className="px-3 border-r border-[#2b1416] text-center text-[#a38c8e]">{row.holding}</td>
+                      <td className="px-3 border-r border-[#2b1416] text-center text-[#a38c8e]">{row.code}</td>
+                      <td className="px-3 border-r border-[#2b1416] font-bold text-white">{row.name}</td>
+                      <td className="px-3 border-r border-[#2b1416] text-[#a38c8e] text-[10px]">{row.reason}</td>
+                      <td className="px-3 border-r border-[#2b1416] text-right text-white bg-blue-900/5">{parseFloat(row.entry).toFixed(3)}</td>
+                      <td className="px-3 border-r border-[#2b1416] text-right text-red-400/80 bg-red-900/5">{parseFloat(row.sl).toFixed(3)}</td>
+                      <td className="px-3 border-r border-[#2b1416] text-center text-white">{row.riskPct}</td>
+                      <td className="px-3 border-r border-[#2b1416] text-right text-emerald-400 bg-emerald-900/5">{row.tp ? parseFloat(row.tp).toFixed(3) : '-'}</td>
+                      
+                      {/* Nilai Yang Dikira */}
+                      <td className="px-3 border-r border-[#2b1416] text-right font-bold text-red-300">{calc.maxLoss.toFixed(2)}</td>
+                      <td className="px-3 border-r border-[#2b1416] text-center font-bold text-blue-300">{calc.unitsToBuy}</td>
+                      <td className="px-3 border-r border-[#2b1416] text-right font-bold text-white">{calc.capitalNeeded.toFixed(2)}</td>
+                      
+                      <td className="px-3 text-center">
+                        <span className={`px-2 py-1 rounded-full text-[9px] font-bold tracking-wider ${
+                          row.status === 'ACTIVE' ? 'bg-blue-900/30 text-blue-400 border border-blue-500/30' :
+                          row.status === 'WATCHLIST' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-500/30' :
+                          row.status === 'EXECUTED' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-500/30' :
+                          'bg-gray-800/50 text-gray-400 border border-gray-600/50'
+                        }`}>
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderJournal = () => (
     <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500">
@@ -462,7 +515,6 @@ export default function App() {
               </div>
               <span className="font-bold text-xl tracking-wide">Tickr<span className="text-[#ff2a44]">Log</span></span>
             </div>
-            {/* Butang Tutup (X) Pada Mobile Sahaja */}
             <button className="md:hidden text-[#a38c8e] hover:text-white" onClick={() => setIsMobileMenuOpen(false)}>
                <X size={24} />
             </button>
@@ -470,7 +522,6 @@ export default function App() {
 
           <nav className="px-4 space-y-2 mt-2 md:mt-4">
             <p className="px-4 text-[10px] uppercase tracking-widest text-[#a38c8e] font-semibold mb-4">Menu Utama</p>
-            
             <button onClick={() => navigateTo('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'dashboard' ? 'bg-gradient-to-r from-[#2b1416] to-transparent text-[#ff2a44] border-l-2 border-[#ff2a44]' : 'text-[#a38c8e] hover:bg-[#170b0c] hover:text-white'}`}>
               <LayoutDashboard size={18} /> <span className="font-medium text-sm">Dashboard</span>
             </button>
@@ -483,7 +534,6 @@ export default function App() {
           </nav>
         </div>
         
-        {/* Butang Tetapan (Settings) di Bawah Kiri */}
         <div className="p-4 border-t border-[#2b1416]">
           <button onClick={() => navigateTo('settings')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'settings' ? 'bg-gradient-to-r from-[#2b1416] to-transparent text-[#ff2a44] border-l-2 border-[#ff2a44]' : 'text-[#a38c8e] hover:bg-[#170b0c] hover:text-white'}`}>
             <Settings size={18} /> <span className="font-medium text-sm">Tetapan</span>
@@ -493,25 +543,14 @@ export default function App() {
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden w-full">
-        {/* Header */}
         <header className="h-16 md:h-20 border-b border-[#2b1416] flex items-center justify-between px-4 md:px-8 bg-[#090505]/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
-          
           <div className="flex items-center gap-3 w-full md:w-auto">
-             {/* Hamburger Button untuk Mobile */}
              <button className="md:hidden text-[#a38c8e] hover:text-white p-1" onClick={() => setIsMobileMenuOpen(true)}>
                <Menu size={24} />
              </button>
-
-             {/* Search Bar */}
             <div className="relative flex-1 md:w-72">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a38c8e]" />
-              <input 
-                type="text" 
-                placeholder="Cari..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#170b0c] border border-[#2b1416] rounded-full py-2 pl-9 md:pl-10 pr-4 text-xs md:text-sm text-white placeholder-[#a38c8e] focus:outline-none focus:border-[#ff2a44] transition-colors uppercase" 
-              />
+              <input type="text" placeholder="Cari..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-[#170b0c] border border-[#2b1416] rounded-full py-2 pl-9 md:pl-10 pr-4 text-xs md:text-sm text-white placeholder-[#a38c8e] focus:outline-none focus:border-[#ff2a44] transition-colors uppercase" />
             </div>
           </div>
           
@@ -520,8 +559,6 @@ export default function App() {
               <Plus size={16} /> <span className="hidden md:inline">Trade Baru</span>
             </button>
             <div className="hidden sm:block w-px h-6 bg-[#2b1416]"></div>
-            
-            {/* Loceng Notifikasi */}
             <div className="relative">
               <button onClick={() => setShowNotifications(!showNotifications)} className="text-[#a38c8e] hover:text-white transition-colors relative mt-1">
                 <Bell size={20} />
@@ -537,7 +574,6 @@ export default function App() {
                 </div>
               )}
             </div>
-            
             <div onClick={() => navigateTo('settings')} className="flex items-center gap-3 cursor-pointer group">
               <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-[#2b1416] border border-[#ff2a44] flex items-center justify-center text-xs md:text-sm font-bold group-hover:bg-[#ff2a44] transition-colors">AZ</div>
               <div className="hidden lg:block">
@@ -549,7 +585,6 @@ export default function App() {
           </div>
         </header>
 
-        {/* Scrollable Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-hide">
           <div className="max-w-7xl mx-auto">
             {activeMenu === 'dashboard' && renderDashboard()}
