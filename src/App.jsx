@@ -1,41 +1,15 @@
 import { useState } from 'react';
 import { 
-  LayoutDashboard, 
-  BookOpen, 
-  Target, 
-  Settings, 
-  TrendingUp, 
-  Wallet, 
-  Activity, 
-  Percent,
-  Bell,
-  Search,
-  ChevronDown,
-  Plus,
-  Filter,
-  User,
-  ArrowRightLeft,
-  Briefcase,
-  Menu,
-  X,
-  Save
+  LayoutDashboard, BookOpen, Target, Settings, TrendingUp, Wallet, Activity, 
+  Percent, Bell, Search, ChevronDown, Plus, Filter, User, ArrowRightLeft, 
+  Briefcase, Menu, X, Save, Lock
 } from 'lucide-react';
 import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip as RechartsTooltip, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
+  ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 
-// --- MOCK DATA ---
-const currentCapital = 1050.00;
-
+// --- MOCK DATA UNTUK GRAF ---
 const dataMinggu = [
   { name: 'Isn', profit: 50 }, { name: 'Sel', profit: -20 }, { name: 'Rab', profit: 100 },
   { name: 'Kha', profit: 150 }, { name: 'Jum', profit: 90 }
@@ -51,9 +25,7 @@ const dataTahun = [
 ];
 
 const strategyData = [
-  { name: 'Pullback + Vol', value: 45 },
-  { name: 'Breakout', value: 30 },
-  { name: 'Reversal', value: 25 },
+  { name: 'Pullback + Vol', value: 45 }, { name: 'Breakout', value: 30 }, { name: 'Reversal', value: 25 },
 ];
 const COLORS = ['#ff2a44', '#ff7b8c', '#4a2528'];
 
@@ -69,9 +41,7 @@ const StatCard = ({ title, value, icon: Icon, trend, trendValue }) => (
     <div className="relative">
       <div className="flex justify-between items-start mb-4">
         <h3 className="text-[#a38c8e] text-xs font-semibold tracking-wider uppercase">{title}</h3>
-        <div className="p-2 bg-[#2b1416] rounded-lg text-[#ff2a44]">
-          <Icon size={18} />
-        </div>
+        <div className="p-2 bg-[#2b1416] rounded-lg text-[#ff2a44]"><Icon size={18} /></div>
       </div>
       <div className="text-2xl md:text-3xl font-bold text-white mb-2">{value}</div>
       <div className="flex items-center text-xs md:text-sm">
@@ -84,41 +54,88 @@ const StatCard = ({ title, value, icon: Icon, trend, trendValue }) => (
 );
 
 export default function App() {
-  const [activeMenu, setActiveMenu] = useState('plan'); // Tukar default ke 'plan' untuk test
+  const [activeMenu, setActiveMenu] = useState('plan');
   const [activeTabSettings, setActiveTabSettings] = useState('modal');
   const [timeframe, setTimeframe] = useState('Bulan');
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // --- STATE UNTUK TRADING PLAN (TABLE) ---
+  // GLOBAL STATE YANG BOLEH DIKEMASKINI DI SETTINGS
+  const [capital, setCapital] = useState(1050.00);
+  const [setupsList, setSetupsList] = useState(['Breakout', 'Pullback + Vol', 'Reversal']);
+  const [profile, setProfile] = useState({ name: 'Aiman Zulkifli', email: 'aiman@example.com', initials: 'AZ' });
+
+  // STATE UNTUK SETTINGS FORM
+  const [txType, setTxType] = useState('Deposit (+)');
+  const [txAmount, setTxAmount] = useState('');
+  const [tempName, setTempName] = useState(profile.name);
+  const [tempEmail, setTempEmail] = useState(profile.email);
+  const [newSetupName, setNewSetupName] = useState('');
+
+  // STATE UNTUK TRADING PLAN (TABLE)
   const [plans, setPlans] = useState([
-    { id: 1, date: '1-Jul-2026', holding: '13', code: '0196', name: 'QES', reason: 'Pullback + Vol', entry: '0.545', sl: '0.525', riskPct: '3', tp: '0.610', status: 'ACTIVE' }
+    { id: 1, date: '1-Jul-2026', holding: '13', code: '0196', name: 'QES', reason: 'Pullback + Vol', entry: '0.545', sl: '0.525', riskPct: '3', tp: '0.610', status: 'ACTIVE', lockedData: null }
   ]);
 
   const [newPlan, setNewPlan] = useState({
-    date: '11-Jul-2026', holding: '0', code: '', name: '', reason: 'Breakout', entry: '', sl: '', riskPct: '2', tp: '', status: 'WATCHLIST'
+    date: '11-Jul-2026', holding: '0', code: '', name: '', reason: setupsList[0] || '', entry: '', sl: '', riskPct: '2', tp: '', status: 'WATCHLIST'
   });
 
+  // HANDLER SETTINGS - Modal
+  const handleUpdateCapital = () => {
+    const amt = parseFloat(txAmount);
+    if (amt && amt > 0) {
+      setCapital(prev => txType.includes('+') ? prev + amt : prev - amt);
+      setTxAmount('');
+      alert("Modal berjaya dikemaskini!");
+    }
+  };
+
+  // HANDLER SETTINGS - Profil
+  const handleSaveProfile = () => {
+    const names = tempName.trim().split(' ');
+    const inits = names.length > 1 ? (names[0][0] + names[names.length-1][0]) : names[0][0];
+    setProfile({ name: tempName, email: tempEmail, initials: inits.toUpperCase() });
+    alert("Profil berjaya disimpan!");
+  };
+
+  // HANDLER SETTINGS - Setup
+  const handleAddSetup = () => {
+    if (newSetupName && !setupsList.includes(newSetupName)) {
+      setSetupsList([...setupsList, newSetupName]);
+      setNewSetupName('');
+    }
+  };
+  const handleRemoveSetup = (setupToRemove) => {
+    setSetupsList(setupsList.filter(s => s !== setupToRemove));
+  };
+
+  // HANDLER TRADING PLAN
   const handleNewPlanChange = (e) => {
     const { name, value } = e.target;
     setNewPlan(prev => ({ ...prev, [name]: value }));
   };
 
   const handleAddPlan = () => {
-    if (!newPlan.code || !newPlan.entry) return; // Simple validation
-    setPlans([{ ...newPlan, id: Date.now() }, ...plans]);
-    setNewPlan({ date: '11-Jul-2026', holding: '0', code: '', name: '', reason: 'Breakout', entry: '', sl: '', riskPct: '2', tp: '', status: 'WATCHLIST' });
+    if (!newPlan.code || !newPlan.entry) return;
+    setPlans([{ ...newPlan, id: Date.now(), lockedData: null }, ...plans]);
+    setNewPlan({ date: '11-Jul-2026', holding: '0', code: '', name: '', reason: setupsList[0] || '', entry: '', sl: '', riskPct: '2', tp: '', status: 'WATCHLIST' });
   };
 
-  // Logik Auto-Kira Position Sizing
-  const calculatePosition = (row) => {
+  // LOGIK AUTO-KIRA POSITION SIZING (Dengan Sokongan Lock Data)
+  const calculatePosition = (row, refCapital) => {
+    // Kalau dah executed dan data dah dikunci, return data lama
+    if (row.lockedData) {
+      return row.lockedData;
+    }
+
     const entry = parseFloat(row.entry) || 0;
     const sl = parseFloat(row.sl) || 0;
     const tp = parseFloat(row.tp) || 0;
     const risk = parseFloat(row.riskPct) || 0;
 
-    const maxLoss = currentCapital * (risk / 100);
+    const maxLoss = refCapital * (risk / 100);
     const riskPerUnit = entry > sl ? entry - sl : 0;
     
     let unitsToBuy = 0;
@@ -137,6 +154,22 @@ export default function App() {
     return { maxLoss, unitsToBuy, capitalNeeded, profitPct };
   };
 
+  const handleRowStatusChange = (id, newStatus) => {
+    setPlans(plans.map(p => {
+      if (p.id === id) {
+        if (newStatus === 'EXECUTED' && p.status !== 'EXECUTED') {
+          // Kunci data sekarang dengan modal terkini
+          const currentCalc = calculatePosition(p, capital);
+          return { ...p, status: newStatus, lockedData: currentCalc };
+        } else if (newStatus !== 'EXECUTED') {
+          // Buka kunci (unlock) kalau tukar ke status lain
+          return { ...p, status: newStatus, lockedData: null };
+        }
+      }
+      return p;
+    }));
+  };
+
   const navigateTo = (menu) => {
     setActiveMenu(menu);
     setIsMobileMenuOpen(false);
@@ -145,12 +178,10 @@ export default function App() {
   const chartData = timeframe === 'Minggu' ? dataMinggu : timeframe === 'Bulan' ? dataBulan : dataTahun;
   const filteredJournal = mockJournal.filter(trade => trade.symbol.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  // --- RENDER VIEWS ---
-
   const renderDashboard = () => (
     <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <StatCard title="Modal Semasa" value={`RM ${currentCapital.toLocaleString('en-MY', {minimumFractionDigits: 2})}`} icon={Wallet} trend="up" trendValue="+12.5%" />
+        <StatCard title="Modal Semasa" value={`RM ${capital.toLocaleString('en-MY', {minimumFractionDigits: 2})}`} icon={Wallet} trend="up" trendValue="+12.5%" />
         <StatCard title="Untung Bersih (TNP)" value="RM 511.52" icon={TrendingUp} trend="up" trendValue="+8.2%" />
         <StatCard title="Kadar Kemenangan" value="68.5%" icon={Target} trend="up" trendValue="+5.1%" />
         <StatCard title="Jumlah ROI" value="19.00%" icon={Percent} trend="up" trendValue="+2.4%" />
@@ -219,7 +250,6 @@ export default function App() {
         </div>
       </div>
       
-      {/* Trade Terkini */}
       <div className="bg-[#170b0c] border border-[#2b1416] rounded-2xl p-4 md:p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-base md:text-lg font-bold">Trade Terkini</h2>
@@ -249,7 +279,7 @@ export default function App() {
 
   const renderTradingPlan = () => {
     // Pengiraan Automatik untuk Input Row
-    const calcInput = calculatePosition(newPlan);
+    const calcInput = calculatePosition(newPlan, capital);
 
     return (
       <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500">
@@ -260,18 +290,16 @@ export default function App() {
           </div>
           <div className="bg-[#170b0c] border border-[#2b1416] px-4 py-2 rounded-xl flex items-center gap-4 shadow-md w-full md:w-auto">
              <div>
-               <p className="text-[10px] md:text-xs text-[#a38c8e]">Modal Rujukan</p>
-               <p className="text-base md:text-lg font-bold text-white">RM {currentCapital.toLocaleString('en-MY', {minimumFractionDigits: 2})}</p>
+               <p className="text-[10px] md:text-xs text-[#a38c8e]">Modal Semasa</p>
+               <p className="text-base md:text-lg font-bold text-white">RM {capital.toLocaleString('en-MY', {minimumFractionDigits: 2})}</p>
              </div>
           </div>
         </div>
         
-        {/* Jadual Utama bergaya Spreadsheet */}
         <div className="bg-[#170b0c] border border-[#2b1416] rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-left border-collapse whitespace-nowrap min-w-[1200px]">
               
-              {/* HEADER KUMPULAN (Double-header) */}
               <thead>
                 <tr className="bg-[#2b1416] text-[#a38c8e] text-[9px] md:text-[10px] uppercase tracking-widest text-center border-b border-[#4a2528]">
                   <th rowSpan="2" className="py-2 px-3 border-r border-[#4a2528] font-bold">Date</th>
@@ -282,16 +310,13 @@ export default function App() {
                   <th rowSpan="2" className="py-2 px-3 font-bold bg-[#112a1f] text-emerald-300">Status</th>
                 </tr>
                 <tr className="bg-[#110809] text-[#a38c8e] text-[9px] md:text-[10px] uppercase tracking-wider text-center border-b border-[#2b1416]">
-                  {/* Stock */}
                   <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Code</th>
                   <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Name</th>
-                  {/* Planning */}
                   <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Reason Buy</th>
                   <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Entry Price</th>
                   <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Stop Loss</th>
                   <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Risk %</th>
                   <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Target Price</th>
-                  {/* Position Sizing */}
                   <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Max Loss (RM)</th>
                   <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Unit To Buy</th>
                   <th className="py-2 px-3 border-r border-[#2b1416] font-medium">Capital Needed</th>
@@ -308,7 +333,7 @@ export default function App() {
                   
                   <td className="p-1 border-r border-[#2b1416]">
                     <select name="reason" value={newPlan.reason} onChange={handleNewPlanChange} className="w-28 bg-[#090505] p-1.5 rounded outline-none border border-[#4a2528] text-white text-[10px]">
-                      <option>Breakout</option><option>Pullback + Vol</option><option>Reversal</option>
+                      {setupsList.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </td>
                   <td className="p-1 border-r border-[#2b1416] bg-blue-900/10"><input type="number" step="0.005" name="entry" placeholder="0.000" value={newPlan.entry} onChange={handleNewPlanChange} className="w-16 bg-[#090505] p-1.5 rounded outline-none border border-blue-900/50 focus:border-blue-500 text-white text-right" /></td>
@@ -316,7 +341,7 @@ export default function App() {
                   <td className="p-1 border-r border-[#2b1416] bg-[#170b0c]"><input type="number" step="1" name="riskPct" value={newPlan.riskPct} onChange={handleNewPlanChange} className="w-12 bg-[#090505] p-1.5 rounded outline-none border border-[#4a2528] text-white text-center" /></td>
                   <td className="p-1 border-r border-[#2b1416] bg-emerald-900/10"><input type="number" step="0.005" name="tp" placeholder="0.000" value={newPlan.tp} onChange={handleNewPlanChange} className="w-16 bg-[#090505] p-1.5 rounded outline-none border border-emerald-900/50 focus:border-emerald-500 text-emerald-400 text-right" /></td>
                   
-                  {/* Auto Calculated Columns untuk Input Row */}
+                  {/* Auto Calculated Columns */}
                   <td className="p-2 border-r border-[#2b1416] text-right font-bold text-red-300 bg-[#170b0c]">{calcInput.maxLoss > 0 ? calcInput.maxLoss.toFixed(2) : '-'}</td>
                   <td className="p-2 border-r border-[#2b1416] text-center font-bold text-blue-300 bg-[#170b0c]">{calcInput.unitsToBuy > 0 ? calcInput.unitsToBuy : '-'}</td>
                   <td className="p-2 border-r border-[#2b1416] text-right font-bold text-white bg-[#170b0c]">{calcInput.capitalNeeded > 0 ? calcInput.capitalNeeded.toFixed(2) : '-'}</td>
@@ -331,13 +356,17 @@ export default function App() {
 
                 {/* DATA ROWS (Sejarah/Senarai Plan yang dah di 'Save') */}
                 {plans.map((row) => {
-                  const calc = calculatePosition(row);
+                  const calc = calculatePosition(row, capital);
+                  const isRowLocked = row.status === 'EXECUTED';
+                  
                   return (
-                    <tr key={row.id} className="border-b border-[#2b1416]/50 hover:bg-[#2b1416]/20 transition-colors h-10">
+                    <tr key={row.id} className={`border-b border-[#2b1416]/50 transition-colors h-10 ${isRowLocked ? 'bg-[#110809] opacity-80' : 'hover:bg-[#2b1416]/20'}`}>
                       <td className="px-3 border-r border-[#2b1416] text-center text-[#a38c8e] text-[10px]">{row.date}</td>
                       <td className="px-3 border-r border-[#2b1416] text-center text-[#a38c8e]">{row.holding}</td>
                       <td className="px-3 border-r border-[#2b1416] text-center text-[#a38c8e]">{row.code}</td>
-                      <td className="px-3 border-r border-[#2b1416] font-bold text-white">{row.name}</td>
+                      <td className="px-3 border-r border-[#2b1416] font-bold text-white flex items-center gap-2 h-10">
+                        {isRowLocked && <Lock size={10} className="text-[#a38c8e]" />} {row.name}
+                      </td>
                       <td className="px-3 border-r border-[#2b1416] text-[#a38c8e] text-[10px]">{row.reason}</td>
                       <td className="px-3 border-r border-[#2b1416] text-right text-white bg-blue-900/5">{parseFloat(row.entry).toFixed(3)}</td>
                       <td className="px-3 border-r border-[#2b1416] text-right text-red-400/80 bg-red-900/5">{parseFloat(row.sl).toFixed(3)}</td>
@@ -345,19 +374,27 @@ export default function App() {
                       <td className="px-3 border-r border-[#2b1416] text-right text-emerald-400 bg-emerald-900/5">{row.tp ? parseFloat(row.tp).toFixed(3) : '-'}</td>
                       
                       {/* Nilai Yang Dikira */}
-                      <td className="px-3 border-r border-[#2b1416] text-right font-bold text-red-300">{calc.maxLoss.toFixed(2)}</td>
-                      <td className="px-3 border-r border-[#2b1416] text-center font-bold text-blue-300">{calc.unitsToBuy}</td>
-                      <td className="px-3 border-r border-[#2b1416] text-right font-bold text-white">{calc.capitalNeeded.toFixed(2)}</td>
+                      <td className={`px-3 border-r border-[#2b1416] text-right font-bold ${isRowLocked ? 'text-red-400/50' : 'text-red-300'}`}>{calc.maxLoss.toFixed(2)}</td>
+                      <td className={`px-3 border-r border-[#2b1416] text-center font-bold ${isRowLocked ? 'text-blue-400/50' : 'text-blue-300'}`}>{calc.unitsToBuy}</td>
+                      <td className={`px-3 border-r border-[#2b1416] text-right font-bold ${isRowLocked ? 'text-gray-400' : 'text-white'}`}>{calc.capitalNeeded.toFixed(2)}</td>
                       
                       <td className="px-3 text-center">
-                        <span className={`px-2 py-1 rounded-full text-[9px] font-bold tracking-wider ${
-                          row.status === 'ACTIVE' ? 'bg-blue-900/30 text-blue-400 border border-blue-500/30' :
-                          row.status === 'WATCHLIST' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-500/30' :
-                          row.status === 'EXECUTED' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-500/30' :
-                          'bg-gray-800/50 text-gray-400 border border-gray-600/50'
-                        }`}>
-                          {row.status}
-                        </span>
+                        {/* Dropdown Status untuk Sejarah - Boleh tukar ke EXECUTED di sini */}
+                        <select 
+                          value={row.status} 
+                          onChange={(e) => handleRowStatusChange(row.id, e.target.value)}
+                          className={`bg-transparent outline-none font-bold text-[9px] tracking-wider cursor-pointer p-1 rounded-full border ${
+                            row.status === 'ACTIVE' ? 'text-blue-400 border-blue-500/30 bg-blue-900/30' :
+                            row.status === 'WATCHLIST' ? 'text-yellow-400 border-yellow-500/30 bg-yellow-900/30' :
+                            row.status === 'EXECUTED' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-900/30' :
+                            'text-gray-400 border-gray-600/50 bg-gray-800/50'
+                          }`}
+                        >
+                          <option value="ACTIVE" className="bg-[#090505]">ACTIVE</option>
+                          <option value="WATCHLIST" className="bg-[#090505]">WATCHLIST</option>
+                          <option value="EXECUTED" className="bg-[#090505]">EXECUTED</option>
+                          <option value="CANCELLED" className="bg-[#090505]">CANCELLED</option>
+                        </select>
                       </td>
                     </tr>
                   )
@@ -428,22 +465,22 @@ export default function App() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-6">
             <div className="bg-[#090505] p-4 rounded-xl border border-[#2b1416]">
               <p className="text-[10px] md:text-xs text-[#a38c8e] mb-1">Modal Berdaftar</p>
-              <p className="text-xl md:text-2xl font-bold font-mono text-white">RM {currentCapital.toFixed(2)}</p>
+              <p className="text-xl md:text-2xl font-bold font-mono text-white">RM {capital.toFixed(2)}</p>
             </div>
           </div>
           <div className="flex flex-col md:flex-row gap-4 md:items-end">
             <div className="flex-1 space-y-1">
               <label className="text-[10px] md:text-xs text-[#a38c8e] uppercase">Jenis Transaksi</label>
-              <select className="w-full bg-[#090505] border border-[#2b1416] rounded-lg p-3 text-sm text-white outline-none focus:border-[#ff2a44]">
+              <select value={txType} onChange={(e) => setTxType(e.target.value)} className="w-full bg-[#090505] border border-[#2b1416] rounded-lg p-3 text-sm text-white outline-none focus:border-[#ff2a44]">
                 <option>Deposit (+)</option>
                 <option>Withdrawal (-)</option>
               </select>
             </div>
             <div className="flex-1 space-y-1">
               <label className="text-[10px] md:text-xs text-[#a38c8e] uppercase">Jumlah (RM)</label>
-              <input type="number" placeholder="0.00" className="w-full bg-[#090505] border border-[#2b1416] rounded-lg p-3 text-sm text-white outline-none focus:border-[#ff2a44] font-mono" />
+              <input type="number" value={txAmount} onChange={(e) => setTxAmount(e.target.value)} placeholder="0.00" className="w-full bg-[#090505] border border-[#2b1416] rounded-lg p-3 text-sm text-white outline-none focus:border-[#ff2a44] font-mono" />
             </div>
-            <button className="w-full md:w-auto bg-[#ff2a44] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#e0253b] text-sm">Kemaskini Modal</button>
+            <button onClick={handleUpdateCapital} className="w-full md:w-auto bg-[#ff2a44] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#e0253b] text-sm">Kemaskini Modal</button>
           </div>
         </div>
       )}
@@ -454,15 +491,15 @@ export default function App() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
             <div className="space-y-1">
               <label className="text-[10px] md:text-xs text-[#a38c8e] uppercase">Nama Penuh</label>
-              <input type="text" defaultValue="Aiman Zulkifli" className="w-full bg-[#090505] border border-[#2b1416] rounded-lg p-3 text-sm text-white outline-none focus:border-[#ff2a44]" />
+              <input type="text" value={tempName} onChange={(e) => setTempName(e.target.value)} className="w-full bg-[#090505] border border-[#2b1416] rounded-lg p-3 text-sm text-white outline-none focus:border-[#ff2a44]" />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] md:text-xs text-[#a38c8e] uppercase">Emel</label>
-              <input type="email" defaultValue="aiman@example.com" className="w-full bg-[#090505] border border-[#2b1416] rounded-lg p-3 text-sm text-white outline-none focus:border-[#ff2a44]" />
+              <input type="email" value={tempEmail} onChange={(e) => setTempEmail(e.target.value)} className="w-full bg-[#090505] border border-[#2b1416] rounded-lg p-3 text-sm text-white outline-none focus:border-[#ff2a44]" />
             </div>
           </div>
           <div className="mt-6">
-            <button className="w-full sm:w-auto bg-[#2b1416] border border-[#ff2a44] text-[#ff2a44] px-6 py-3 md:py-2 rounded-lg font-bold hover:bg-[#ff2a44] hover:text-white transition-colors text-sm">Simpan Profil</button>
+            <button onClick={handleSaveProfile} className="w-full sm:w-auto bg-[#2b1416] border border-[#ff2a44] text-[#ff2a44] px-6 py-3 md:py-2 rounded-lg font-bold hover:bg-[#ff2a44] hover:text-white transition-colors text-sm">Simpan Profil</button>
           </div>
         </div>
       )}
@@ -472,22 +509,16 @@ export default function App() {
           <h2 className="text-base md:text-lg font-bold mb-2">Senarai Strategi & Setup</h2>
           <p className="text-xs md:text-sm text-[#a38c8e] mb-6">Tambah atau buang nama setup yang anda gunakan dalam jurnal.</p>
           <div className="space-y-3 mb-6">
-            <div className="flex justify-between items-center bg-[#090505] border border-[#2b1416] p-3 rounded-lg">
-              <span className="text-sm text-white font-medium">Breakout</span>
-              <button className="text-red-500 text-xs font-bold hover:underline p-2">Padam</button>
-            </div>
-            <div className="flex justify-between items-center bg-[#090505] border border-[#2b1416] p-3 rounded-lg">
-              <span className="text-sm text-white font-medium">Pullback + Vol</span>
-              <button className="text-red-500 text-xs font-bold hover:underline p-2">Padam</button>
-            </div>
-            <div className="flex justify-between items-center bg-[#090505] border border-[#2b1416] p-3 rounded-lg">
-              <span className="text-sm text-white font-medium">Reversal</span>
-              <button className="text-red-500 text-xs font-bold hover:underline p-2">Padam</button>
-            </div>
+            {setupsList.map(setup => (
+              <div key={setup} className="flex justify-between items-center bg-[#090505] border border-[#2b1416] p-3 rounded-lg">
+                <span className="text-sm text-white font-medium">{setup}</span>
+                <button onClick={() => handleRemoveSetup(setup)} className="text-red-500 text-xs font-bold hover:underline p-2">Padam</button>
+              </div>
+            ))}
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
-            <input type="text" placeholder="Nama setup baru..." className="flex-1 bg-[#090505] border border-[#2b1416] rounded-lg p-3 text-sm text-white outline-none focus:border-[#ff2a44]" />
-            <button className="w-full sm:w-auto bg-[#ff2a44] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#e0253b] text-sm">Tambah</button>
+            <input type="text" value={newSetupName} onChange={(e) => setNewSetupName(e.target.value)} placeholder="Nama setup baru..." className="flex-1 bg-[#090505] border border-[#2b1416] rounded-lg p-3 text-sm text-white outline-none focus:border-[#ff2a44]" />
+            <button onClick={handleAddSetup} className="w-full sm:w-auto bg-[#ff2a44] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#e0253b] text-sm">Tambah</button>
           </div>
         </div>
       )}
@@ -497,15 +528,10 @@ export default function App() {
   return (
     <div className="flex h-screen bg-[#090505] text-white font-sans overflow-hidden">
       
-      {/* OVERLAY MOBILE MENU */}
       {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm" 
-          onClick={() => setIsMobileMenuOpen(false)}
-        ></div>
+        <div className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
       )}
 
-      {/* SIDEBAR (Responsive) */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#110809] border-r border-[#2b1416] flex flex-col justify-between transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div>
           <div className="p-6 md:p-8 flex items-center justify-between">
@@ -541,7 +567,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden w-full">
         <header className="h-16 md:h-20 border-b border-[#2b1416] flex items-center justify-between px-4 md:px-8 bg-[#090505]/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
           <div className="flex items-center gap-3 w-full md:w-auto">
@@ -574,10 +599,12 @@ export default function App() {
                 </div>
               )}
             </div>
+            
+            {/* PROFIL YANG BOLEH BERTUKAR NAMA */}
             <div onClick={() => navigateTo('settings')} className="flex items-center gap-3 cursor-pointer group">
-              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-[#2b1416] border border-[#ff2a44] flex items-center justify-center text-xs md:text-sm font-bold group-hover:bg-[#ff2a44] transition-colors">AZ</div>
+              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-[#2b1416] border border-[#ff2a44] flex items-center justify-center text-xs md:text-sm font-bold group-hover:bg-[#ff2a44] transition-colors">{profile.initials}</div>
               <div className="hidden lg:block">
-                <p className="text-sm font-semibold group-hover:text-[#ff2a44] transition-colors">Aiman Zulkifli</p>
+                <p className="text-sm font-semibold group-hover:text-[#ff2a44] transition-colors">{profile.name}</p>
                 <p className="text-[10px] text-[#a38c8e]">Trader Profesional</p>
               </div>
               <ChevronDown size={14} className="text-[#a38c8e] hidden md:block" />
